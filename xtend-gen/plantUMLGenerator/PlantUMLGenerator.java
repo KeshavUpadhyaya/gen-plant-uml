@@ -14,7 +14,6 @@ import org.eclipse.xtext.xbase.lib.CollectionExtensions;
 import org.eclipse.xtext.xbase.lib.Conversions;
 import org.eclipse.xtext.xbase.lib.Exceptions;
 import org.eclipse.xtext.xbase.lib.Functions.Function1;
-import org.eclipse.xtext.xbase.lib.InputOutput;
 import org.eclipse.xtext.xbase.lib.IterableExtensions;
 import org.eclipse.xtext.xbase.lib.ListExtensions;
 
@@ -23,6 +22,8 @@ public class PlantUMLGenerator {
   private static HashSet<UnorderedPair<Class>> classesWithAssociationsToEachOther;
 
   private static HashSet<UnorderedPair<Class>> classesWithBiDirectionalAssociationsToEachOther;
+
+  private static HashSet<UnorderedPair<Class>> classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated;
 
   public static String generate(final Object[] objects) {
     HashSet<Class<?>> uniqueInterfaces = new HashSet<Class<?>>();
@@ -46,6 +47,8 @@ public class PlantUMLGenerator {
     };
     final String realizations = IterableExtensions.join(ListExtensions.<Object, String>map(((List<Object>)Conversions.doWrapArray(objects)), _function_3), "\n");
     PlantUMLGenerator.computeClassesWithBiDirectionalAssociationsToEachOther(objects);
+    HashSet<UnorderedPair<Class>> _hashSet = new HashSet<UnorderedPair<Class>>();
+    PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated = _hashSet;
     final Function1<Object, String> _function_4 = (Object it) -> {
       return PlantUMLGenerator.getAssociations(it);
     };
@@ -240,10 +243,13 @@ public class PlantUMLGenerator {
     final String className = obj.getClass().getSimpleName();
     final String fieldName = field.getName();
     final String fieldType = field.getType().getSimpleName();
+    Class<?> _type = field.getType();
+    Class<?> _class = obj.getClass();
+    final UnorderedPair<Class<?>> pair = new UnorderedPair<Class<?>>(_type, _class);
+    final boolean hasBidirectionalAssoc = PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOther.contains(pair);
     String _xifexpression = null;
     if ((((!field.getType().isPrimitive()) && (!field.getType().isEnum())) && 
-      (!PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOther.contains(
-        new UnorderedPair<Class<?>>(field.getType(), obj.getClass()))))) {
+      (!hasBidirectionalAssoc))) {
       StringConcatenation _builder = new StringConcatenation();
       _builder.append(className);
       _builder.append(" --> \"");
@@ -252,7 +258,31 @@ public class PlantUMLGenerator {
       _builder.append(fieldType);
       _xifexpression = _builder.toString();
     } else {
-      _xifexpression = "";
+      String _xifexpression_1 = null;
+      if ((hasBidirectionalAssoc && (!PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated.contains(pair)))) {
+        final Function1<Field, Boolean> _function = (Field f) -> {
+          Class<?> _type_1 = f.getType();
+          Class<?> _class_1 = obj.getClass();
+          return Boolean.valueOf((_type_1 == _class_1));
+        };
+        final String objName = (((Field[])Conversions.unwrapArray(IterableExtensions.<Field>filter(((Iterable<Field>)Conversions.doWrapArray(field.getType().getDeclaredFields())), _function), Field.class))[0]).getName();
+        Class<?> _type_1 = field.getType();
+        Class<?> _class_1 = obj.getClass();
+        UnorderedPair<Class> _unorderedPair = new UnorderedPair<Class>(_type_1, _class_1);
+        PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated.add(_unorderedPair);
+        StringConcatenation _builder_1 = new StringConcatenation();
+        _builder_1.append(className);
+        _builder_1.append(" \"");
+        _builder_1.append(objName);
+        _builder_1.append("\" <--> \"");
+        _builder_1.append(fieldName);
+        _builder_1.append("\" ");
+        _builder_1.append(fieldType);
+        return _builder_1.toString();
+      } else {
+        _xifexpression_1 = "";
+      }
+      _xifexpression = _xifexpression_1;
     }
     return _xifexpression;
   }
@@ -350,7 +380,6 @@ public class PlantUMLGenerator {
         PlantUMLGenerator.invokeSetterMethod(d, classC, c2);
         if (((PlantUMLGenerator.invokeGetterMethod(c1, classD) == null) && Objects.equal(PlantUMLGenerator.invokeGetterMethod(c2, classD), d))) {
           PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOther.add(pair);
-          InputOutput.<HashSet<UnorderedPair<Class>>>println(PlantUMLGenerator.classesWithBiDirectionalAssociationsToEachOther);
         } else {
         }
       }

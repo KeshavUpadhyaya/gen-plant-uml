@@ -11,6 +11,7 @@ class PlantUMLGenerator {
 
 	static HashSet<UnorderedPair<Class>> classesWithAssociationsToEachOther;
 	static HashSet<UnorderedPair<Class>> classesWithBiDirectionalAssociationsToEachOther;
+	static HashSet<UnorderedPair<Class>> classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated;
 
 	def static generate(Object[] objects) {
 
@@ -25,6 +26,7 @@ class PlantUMLGenerator {
 		val realizations = objects.map[getRealizations(it)].join("\n")
 
 		computeClassesWithBiDirectionalAssociationsToEachOther(objects);
+		classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated = new HashSet();
 		val associations = objects.map[getAssociations(it)].join("\n")
 
 		return '''
@@ -143,10 +145,17 @@ class PlantUMLGenerator {
 		val className = obj.class.simpleName
 		val fieldName = field.getName
 		val fieldType = field.getType.getSimpleName
+		val pair = new UnorderedPair(field.type, obj.class)
+		val hasBidirectionalAssoc = classesWithBiDirectionalAssociationsToEachOther.contains(pair)
 
 		return if (!field.type.primitive && !field.type.enum &&
-			!classesWithBiDirectionalAssociationsToEachOther.contains(
-				new UnorderedPair(field.type, obj.class))) '''«className» --> "«fieldName»" «fieldType»''' else ''
+			!hasBidirectionalAssoc) '''«className» --> "«fieldName»" «fieldType»''' 
+				else if (hasBidirectionalAssoc && !classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated.contains(pair)) {
+				val objName = field.type.declaredFields.filter[ f | f.type === obj.class].get(0).name
+				classesWithBiDirectionalAssociationsToEachOtherAlreadyGenerated.add( new UnorderedPair(field.type, obj.class))
+				return '''«className» "«objName»" <--> "«fieldName»" «fieldType»'''
+				}
+				else ''
 	}
 
 	def static String capitalizeFirstLetter(String str) {
@@ -227,7 +236,7 @@ class PlantUMLGenerator {
 			// check if c1.d is null and c2.d points back to d
 			if (invokeGetterMethod(c1, classD) === null && invokeGetterMethod(c2, classD) == d) {
 				classesWithBiDirectionalAssociationsToEachOther.add(pair)
-				println(classesWithBiDirectionalAssociationsToEachOther)
+//				println(classesWithBiDirectionalAssociationsToEachOther)
 //				println("YES")
 			} else {
 //				println("NOPE")
