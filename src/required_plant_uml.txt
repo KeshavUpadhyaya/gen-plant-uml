@@ -1,0 +1,18 @@
+@startuml
+
+interface I {
+  +add(y: int): int
+}
+
+class B {
+  -x: int
+}
+
+class A {
+}
+A ..|> I
+A --|> B
+A --> "b" B  
+B --> "a" A 
+
+@enduml
